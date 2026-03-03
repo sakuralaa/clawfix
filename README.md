@@ -1,4 +1,4 @@
-# AI Static Check Fix Demo
+# AI Static Check Autofix Agent
 
 A runnable demo repo for an OpenClaw-based static-check diagnosis and repair workflow.
 
