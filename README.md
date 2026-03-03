@@ -2,6 +2,11 @@
 
 A runnable demo repo for an OpenClaw-based static-check diagnosis and repair workflow.
 
+License:
+
+- non-commercial use only
+- commercial use requires prior written permission
+
 The repo contains:
 
 - a small scenario
