@@ -21,6 +21,12 @@ You need these locally:
 - Python 3
 - a Gemini API key
 
+Windows note:
+
+- clone with normal Git is fine, but shell scripts inside the repo must stay LF, not CRLF
+- this repo includes `.gitattributes` for that reason
+- if you already cloned before `.gitattributes` was added, re-checkout or convert the `.sh` files back to LF
+
 ### 1. Clone the required OpenClaw repo locally
 
 This demo must run against your OpenClaw version.
@@ -109,6 +115,23 @@ What this does:
 - mounts this repo at `/demo`
 - uses `/demo/workspace/project` as the OpenClaw workspace
 - waits for the gateway to accept connections before returning
+
+If you are on Windows and the container log shows:
+
+```text
+/demo/docker/bootstrap-openclaw.sh: 2: set: Illegal option -
+```
+
+that means the shell script was checked out with CRLF line endings.
+
+Fix it by re-checking out after pulling the latest repo, or convert the script files to LF and rebuild:
+
+```powershell
+docker compose down -v
+git add --renormalize .
+git reset --hard HEAD
+docker compose up -d --build
+```
 
 `OPENCLAW_REPO_PATH` is expected to target your repo:
 
