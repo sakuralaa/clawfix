@@ -1,0 +1,24 @@
+services:
+  openclaw-gateway:
+    build:
+      context: ${OPENCLAW_REPO_PATH:-../openclaw}
+      dockerfile: Dockerfile
+    container_name: ai-static-check-fix-demo-openclaw
+    restart: unless-stopped
+    user: root
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18799}:18789"
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_PORT: ${OPENCLAW_GATEWAY_PORT:-18799}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_PRIMARY_MODEL: ${OPENCLAW_PRIMARY_MODEL:-google/gemini-2.5-flash}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - openclaw_state:/home/node/.openclaw
+      - .:/demo
+    command: ["sh", "/demo/docker/bootstrap-openclaw.sh"]
+
+volumes:
+  openclaw_state:

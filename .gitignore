@@ -1,0 +1,14 @@
+workspace/project/build/
+workspace/project/demo_app
+.env
+.DS_Store
+logs/openclaw-runs/openclaw-demo.log
+workspace/project/.git/
+workspace/project/.openclaw/
+workspace/project/AGENTS.md
+workspace/project/BOOTSTRAP.md
+workspace/project/HEARTBEAT.md
+workspace/project/IDENTITY.md
+workspace/project/SOUL.md
+workspace/project/TOOLS.md
+workspace/project/USER.md

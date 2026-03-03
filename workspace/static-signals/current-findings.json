@@ -1,0 +1,102 @@
+{
+  "workspace": "workspace/project",
+  "tool": "mock-static-check",
+  "scenario": "small",
+  "findings": [
+    {
+      "id": "macro-naming-1",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro maxBufferSize does not match SCREAMING_SNAKE_CASE",
+      "symbol": "maxBufferSize",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 4,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/config_usage.cpp",
+          "line": 4,
+          "column": 10,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 15,
+          "column": 28,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "macro-naming-2",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro File_open_retry does not match SCREAMING_SNAKE_CASE",
+      "symbol": "File_open_retry",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 5,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/config_usage.cpp",
+          "line": 4,
+          "column": 26,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 10,
+          "column": 56,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "resource-leak-1",
+      "ruleId": "resource-leak",
+      "severity": "error",
+      "message": "FILE handle opened by fopen is not released on object teardown",
+      "symbol": "file_",
+      "category": "resource-leak",
+      "primaryLocation": {
+        "file": "src/file_reader.cpp",
+        "line": 5,
+        "column": 54
+      },
+      "relatedLocations": [
+        {
+          "file": "include/file_reader.h",
+          "line": 12,
+          "column": 3,
+          "message": "class-owned FILE* member"
+        }
+      ],
+      "trace": [
+        {
+          "file": "src/file_reader.cpp",
+          "line": 5,
+          "column": 54,
+          "event": "resource acquired by fopen"
+        },
+        {
+          "file": "include/file_reader.h",
+          "line": 12,
+          "column": 3,
+          "event": "resource stored in owning member"
+        },
+        {
+          "file": "include/file_reader.h",
+          "line": 7,
+          "column": 7,
+          "event": "class has no destructor declaration"
+        }
+      ]
+    }
+  ]
+}

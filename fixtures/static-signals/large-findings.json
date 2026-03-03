@@ -1,0 +1,180 @@
+{
+  "workspace": "workspace/project",
+  "tool": "mock-static-check",
+  "scenario": "large",
+  "findings": [
+    {
+      "id": "macro-naming-1",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro maxBufferSize does not match SCREAMING_SNAKE_CASE",
+      "symbol": "maxBufferSize",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 4,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/config_usage.cpp",
+          "line": 10,
+          "column": 10,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/telemetry_report.cpp",
+          "line": 10,
+          "column": 46,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 52,
+          "column": 26,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "macro-naming-2",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro File_open_retry does not match SCREAMING_SNAKE_CASE",
+      "symbol": "File_open_retry",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 5,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/config_usage.cpp",
+          "line": 10,
+          "column": 28,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/telemetry_report.cpp",
+          "line": 214,
+          "column": 42,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 38,
+          "column": 56,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "macro-naming-3",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro telemetryFlushWindow does not match SCREAMING_SNAKE_CASE",
+      "symbol": "telemetryFlushWindow",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 6,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/config_usage.cpp",
+          "line": 10,
+          "column": 43,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/cache_pipeline.cpp",
+          "line": 9,
+          "column": 30,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/telemetry_report.cpp",
+          "line": 10,
+          "column": 41,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 89,
+          "column": 78,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "macro-naming-4",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro Cache_line_size does not match SCREAMING_SNAKE_CASE",
+      "symbol": "Cache_line_size",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 7,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/cache_pipeline.cpp",
+          "line": 9,
+          "column": 10,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 53,
+          "column": 33,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "resource-leak-1",
+      "ruleId": "resource-leak",
+      "severity": "error",
+      "message": "FILE handle opened by fopen is not released on object teardown",
+      "symbol": "file_",
+      "category": "resource-leak",
+      "primaryLocation": {
+        "file": "src/file_reader.cpp",
+        "line": 7,
+        "column": 54
+      },
+      "relatedLocations": [
+        {
+          "file": "include/file_reader.h",
+          "line": 27,
+          "column": 3,
+          "message": "class-owned FILE* member"
+        }
+      ],
+      "trace": [
+        {
+          "file": "src/file_reader.cpp",
+          "line": 7,
+          "column": 54,
+          "event": "resource acquired by fopen"
+        },
+        {
+          "file": "include/file_reader.h",
+          "line": 27,
+          "column": 3,
+          "event": "resource stored in owning member"
+        },
+        {
+          "file": "include/file_reader.h",
+          "line": 15,
+          "column": 7,
+          "event": "class has no destructor declaration"
+        }
+      ]
+    }
+  ]
+}
