@@ -26,6 +26,8 @@ Windows note:
 - clone with normal Git is fine, but shell scripts inside the repo must stay LF, not CRLF
 - this repo includes `.gitattributes` for that reason
 - if you already cloned before `.gitattributes` was added, re-checkout or convert the `.sh` files back to LF
+- on Windows, run Python scripts with `python .\...`
+- on Windows, prefer `docker compose ...` directly instead of `./scripts/*.sh`
 
 ### 1. Clone the required OpenClaw repo locally
 
@@ -93,19 +95,27 @@ Notes:
 Large scenario:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario large
+python ./scripts/reset_demo.py --scenario large
 ```
 
 Small scenario:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario small
+python ./scripts/reset_demo.py --scenario small
 ```
 
 ### 5. Start the dedicated OpenClaw gateway
 
+Linux/macOS:
+
 ```bash
 ./scripts/docker_up.sh
+```
+
+Windows PowerShell:
+
+```powershell
+docker compose up -d --build
 ```
 
 What this does:
@@ -115,6 +125,12 @@ What this does:
 - mounts this repo at `/demo`
 - uses `/demo/workspace/project` as the OpenClaw workspace
 - waits for the gateway to accept connections before returning
+
+Important:
+
+- after `docker compose up -d --build`, wait a bit before probing the gateway
+- the first start can take longer because OpenClaw has to boot and load the model configuration
+- if the first request fails immediately after startup, wait 10 to 20 seconds and retry
 
 If you are on Windows and the container log shows:
 
@@ -149,20 +165,38 @@ If you changed `OPENCLAW_GATEWAY_PORT`, replace `18799`.
 
 The `#token=...` fragment is required for the dashboard.
 
+If the page does not load right away:
+
+- check `docker ps`
+- check `docker compose logs --tail=120 openclaw-gateway`
+- wait a bit and refresh once the gateway is fully up
+
 ### 7. If the browser asks for pairing
 
-List pending device requests:
+Linux/macOS, list pending device requests:
 
 ```bash
 docker exec -it ai-static-check-fix-demo-openclaw \
   sh -lc 'cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices list'
 ```
 
-Approve a request:
+Linux/macOS, approve a request:
 
 ```bash
 docker exec -it ai-static-check-fix-demo-openclaw \
   sh -lc 'cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices approve <requestId>'
+```
+
+Windows PowerShell, list pending device requests:
+
+```powershell
+docker exec -it ai-static-check-fix-demo-openclaw sh -lc "cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices list"
+```
+
+Windows PowerShell, approve a request:
+
+```powershell
+docker exec -it ai-static-check-fix-demo-openclaw sh -lc "cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices approve <requestId>"
 ```
 
 Then refresh the browser.
@@ -177,13 +211,13 @@ Why `18789` here:
 Log mode:
 
 ```bash
-./scripts/openclaw_demo_agent.py --mode log
+python ./scripts/openclaw_demo_agent.py --mode log
 ```
 
 Fix mode:
 
 ```bash
-./scripts/openclaw_demo_agent.py --mode fix
+python ./scripts/openclaw_demo_agent.py --mode fix
 ```
 
 The runner appends session information to:
@@ -244,36 +278,36 @@ Helper commands:
 Small log:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario small
-./scripts/openclaw_demo_agent.py --mode log
+python ./scripts/reset_demo.py --scenario small
+python ./scripts/openclaw_demo_agent.py --mode log
 ```
 
 Small fix:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario small
-./scripts/openclaw_demo_agent.py --mode fix
+python ./scripts/reset_demo.py --scenario small
+python ./scripts/openclaw_demo_agent.py --mode fix
 ```
 
 Large log:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario large
-./scripts/openclaw_demo_agent.py --mode log
+python ./scripts/reset_demo.py --scenario large
+python ./scripts/openclaw_demo_agent.py --mode log
 ```
 
 Large fix:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario large
-./scripts/openclaw_demo_agent.py --mode fix
+python ./scripts/reset_demo.py --scenario large
+python ./scripts/openclaw_demo_agent.py --mode fix
 ```
 
 If you only want to switch the active findings file without resetting the workspace:
 
 ```bash
-python3 ./scripts/use_signal_fixture.py --scenario small
-python3 ./scripts/use_signal_fixture.py --scenario large
+python ./scripts/use_signal_fixture.py --scenario small
+python ./scripts/use_signal_fixture.py --scenario large
 ```
 
 ## Mock Mode
@@ -281,9 +315,9 @@ python3 ./scripts/use_signal_fixture.py --scenario large
 If you want a deterministic local run without real OpenClaw:
 
 ```bash
-python3 ./scripts/reset_demo.py --scenario small
-./scripts/mock_openclaw_agent.py --mode log
-./scripts/mock_openclaw_agent.py --mode fix
+python ./scripts/reset_demo.py --scenario small
+python ./scripts/mock_openclaw_agent.py --mode log
+python ./scripts/mock_openclaw_agent.py --mode fix
 ```
 
 ## Upload Notes
