@@ -357,3 +357,6 @@ Users of this demo should use:
 - `https://github.com/sakuralaa/openclaw.git`
 
 They should not use the official OpenClaw repository for this demo.
+
+## Demo Video
+url: https://www.youtube.com/watch?v=GYFP4GEz5DE
