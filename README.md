@@ -12,6 +12,15 @@ The repo contains:
 
 ## Full Start
 
+### 0. Prerequisites
+
+You need these locally:
+
+- Docker
+- Docker Compose
+- Python 3
+- a Gemini API key
+
 ### 1. Clone the required OpenClaw repo locally
 
 This demo must run against your OpenClaw version.
@@ -42,6 +51,12 @@ cd ai-static-check-fix-demo
 
 ```bash
 cp .env.example .env
+```
+
+Generate a gateway token locally:
+
+```bash
+openssl rand -hex 32
 ```
 
 Edit `.env` and fill your local values:
@@ -99,7 +114,42 @@ What this does:
 
 - `https://github.com/sakuralaa/openclaw.git`
 
-### 6. Run the agent
+### 6. Open the Web UI
+
+Open:
+
+```text
+http://127.0.0.1:18799/#token=<OPENCLAW_GATEWAY_TOKEN>
+```
+
+If you changed `OPENCLAW_GATEWAY_PORT`, replace `18799`.
+
+The `#token=...` fragment is required for the dashboard.
+
+### 7. If the browser asks for pairing
+
+List pending device requests:
+
+```bash
+docker exec -it ai-static-check-fix-demo-openclaw \
+  sh -lc 'cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices list'
+```
+
+Approve a request:
+
+```bash
+docker exec -it ai-static-check-fix-demo-openclaw \
+  sh -lc 'cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices approve <requestId>'
+```
+
+Then refresh the browser.
+
+Why `18789` here:
+
+- host port is `18799` by default
+- container-internal gateway port is `18789`
+
+### 8. Run the agent
 
 Log mode:
 
@@ -117,7 +167,7 @@ The runner appends session information to:
 
 - `logs/openclaw-runs/openclaw-demo.log`
 
-### 7. Stop the gateway
+### 9. Stop the gateway
 
 ```bash
 ./scripts/docker_down.sh
@@ -222,6 +272,21 @@ Before pushing this repo:
 - keep gateway tokens local only
 - review `logs/openclaw-runs/openclaw-demo.log` before pushing, or leave it untracked
 - make sure `OPENCLAW_REPO_PATH` is documented in `.env.example`, not committed in `.env`
+
+## Token And Pairing Summary
+
+Gateway token:
+
+- required by `scripts/openclaw_demo_agent.py`
+- required by the Web UI
+- stored only in your local `.env`
+- can be generated with `openssl rand -hex 32`
+
+Pairing:
+
+- the dedicated gateway may require browser/device pairing
+- if so, use `devices list` and `devices approve` inside the container
+- approval is separate from the shared gateway token
 
 ## Required OpenClaw Repo
 
