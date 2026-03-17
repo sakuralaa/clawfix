@@ -4,6 +4,7 @@ workspace/project/demo_app
 .DS_Store
 __pycache__/
 logs/openclaw-runs/openclaw-demo.log
+tmp/
 workspace/project/.git/
 workspace/project/.openclaw/
 workspace/project/AGENTS.md

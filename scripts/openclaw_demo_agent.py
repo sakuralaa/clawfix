@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import hashlib
 from typing import Any
 from urllib import parse
 from urllib import error, request
@@ -90,20 +91,58 @@ def _workspace_file_list() -> list[str]:
     return files
 
 
+def _required_workspace_files(findings: list[dict[str, Any]]) -> list[str]:
+    files: set[str] = set()
+
+    def add_location(location: Any) -> None:
+        if not isinstance(location, dict):
+            return
+        file_path = location.get("file")
+        if isinstance(file_path, str) and file_path.strip():
+            files.add(file_path.strip())
+
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        add_location(finding.get("primaryLocation"))
+        for location in finding.get("relatedLocations", []):
+            add_location(location)
+        for location in finding.get("trace", []):
+            add_location(location)
+    return sorted(files)
+
+
+def _workspace_source_snapshot() -> dict[str, str]:
+    snapshot: dict[str, str] = {}
+    for relative_path in _workspace_file_list():
+        path = WORKSPACE / relative_path
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        snapshot[relative_path] = digest
+    return snapshot
+
+
 def _build_user_prompt(mode: str) -> str:
     findings = json.loads(FINDINGS_PATH.read_text())
+    required_files = _required_workspace_files(findings["findings"])
     payload = {
         "mode": mode,
         "task": (
             "Analyze the simulated static-check findings against the workspace. "
             "Use OpenClaw filesystem tools to inspect files under workspaceRoot on demand. "
             "Identify root cause, especially whether the issue is upstream, and explain the cross-file fix. "
+            "Print a short visible diagnosis trace after you understand each problem: observed evidence, causal inference, and fix direction. "
+            "Keep that trace accurate and compact instead of exposing hidden chain-of-thought. "
+            "You must inspect every file listed in requiredFilesHint before you finalize a diagnosis or claim the fix is complete. "
             "Coverage is mandatory: do not omit any affected file or known reference, and do not leave any finding partially analyzed. "
-            "In fix mode, edit the workspace files directly and return what you actually changed."
+            "In fix mode, edit the workspace files directly. "
+            "In fix mode, after reading all required files and before the first write, post one short dashboard comment about the diagnosis and intended edit. "
+            "After all edits and validation reads are complete, post one short dashboard comment summarizing what changed. "
+            "After the edits, return only a short completion note."
         ),
         "findings": findings["findings"],
         "workspaceRoot": "/demo/workspace/project",
         "workspaceFilesHint": _workspace_file_list(),
+        "requiredFilesHint": required_files,
     }
     if mode == "log":
         payload["responseContract"] = {
@@ -111,8 +150,10 @@ def _build_user_prompt(mode: str) -> str:
             "requirements": [
                 "Return a top-level object",
                 "Include findings as an array",
-                "Each finding must include id, location, rootCause, filesToChange, fixSummary",
+                "Each finding must include id, location, rootCause, diagnosisTrace, filesToChange, fixSummary",
                 "Each finding must include inspectedLocations as an array of file/line pairs with a short reason",
+                "diagnosisTrace must be an array of 2 to 4 short evidence-based steps",
+                "Each diagnosisTrace step must reflect visible reasoning only, not hidden chain-of-thought",
                 "Include a top-level reasoningSummary string",
                 "Inspect the primary location and every provided relatedLocation before finalizing the answer",
                 "If a trace is provided, inspect the trace locations needed to confirm the upstream root cause",
@@ -125,23 +166,25 @@ def _build_user_prompt(mode: str) -> str:
         }
     else:
         payload["responseContract"] = {
-            "style": "json",
+            "style": "plain_text",
             "requirements": [
-                "Return a top-level object",
                 "Apply the fixes directly to files under workspaceRoot using filesystem edit tools",
                 "Do not return only a proposed plan",
-                "Include summary",
-                "Include appliedEdits as an array",
-                "Each appliedEdits item must have file, change, and status",
-                "Include inspectedLocations as an array of file/line pairs with a short reason",
-                "Include reasoningSummary as a concise explanation, not hidden chain-of-thought",
+                "Inspect every file listed in requiredFilesHint before you finalize the diagnosis or apply the last edit",
+                "Before the first write/edit/apply_patch tool call, post one short dashboard comment that states the diagnosis and planned fix",
+                "After all edits and validation reads are complete, post one short dashboard comment that summarizes what changed",
+                "Each dashboard comment must be short, evidence-based, and must not expose hidden chain-of-thought",
+                "Do not emit repeated dashboard commentary between every small tool call",
                 "Inspect the primary location and every provided relatedLocation before finalizing the plan",
                 "If a trace is provided, inspect the trace locations needed to confirm the upstream root cause",
                 "The applied fixes must cover every affected file you confirmed from the workspace",
                 "Do not leave a known finding partially fixed",
-                "After editing, re-read the changed regions and include a validationSummary",
-                "If any finding could not be fixed, include it under unresolvedFindings with a blocker",
-                "Do not include markdown fences",
+                "After editing, re-read the changed regions and confirm the workspace reflects the intended fix",
+                "Do not claim success if the workspace files remain unchanged after your attempted fix",
+                "The final response must be plain text, not JSON",
+                "The final response must be 1 to 3 short lines",
+                "The final response must briefly state what was fixed and whether anything remains unresolved",
+                "Do not include markdown fences, JSON, or long summaries",
             ],
         }
     return json.dumps(payload, ensure_ascii=False, indent=2)
@@ -202,6 +245,10 @@ def _print_log_summary(payload: dict[str, Any] | None, fallback_text: str) -> No
     if not isinstance(payload, dict):
         print(fallback_text)
         return
+    reasoning_summary = payload.get("reasoningSummary")
+    if isinstance(reasoning_summary, str) and reasoning_summary.strip():
+        print(f"Reasoning summary: {reasoning_summary.strip()}")
+        print()
     findings = payload.get("findings")
     if not isinstance(findings, list) or not findings:
         print(fallback_text)
@@ -223,6 +270,13 @@ def _print_log_summary(payload: dict[str, Any] | None, fallback_text: str) -> No
         root_cause = finding.get("rootCause")
         if isinstance(root_cause, str) and root_cause.strip():
             print(f"Root cause: {root_cause.strip()}")
+        diagnosis_trace = finding.get("diagnosisTrace")
+        if isinstance(diagnosis_trace, list) and diagnosis_trace:
+            steps = [item.strip() for item in diagnosis_trace if isinstance(item, str) and item.strip()]
+            if steps:
+                print("Diagnosis trace:")
+                for index, step in enumerate(steps, start=1):
+                    print(f"  {index}. {step}")
         files_to_change = finding.get("filesToChange")
         if isinstance(files_to_change, list) and files_to_change:
             files = [item for item in files_to_change if isinstance(item, str) and item.strip()]
@@ -249,14 +303,20 @@ def _print_log_summary(payload: dict[str, Any] | None, fallback_text: str) -> No
 def _create_request_body(
     *,
     model: str,
+    agent_id: str,
+    session_key: str,
     system_prompt: str,
     user_prompt: str,
     stream: bool,
 ) -> dict[str, Any]:
+    resolved_model = model
+    if model in {"openclaw", "agent"}:
+        resolved_model = f"openclaw:{agent_id}"
     return {
-        "model": model,
+        "model": resolved_model,
         "temperature": 0,
         "stream": stream,
+        "user": session_key,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -314,6 +374,8 @@ def _run_openclaw_prompt_nonstream(
 ) -> str:
     body = _create_request_body(
         model=model,
+        agent_id=agent_id,
+        session_key=session_key,
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         stream=False,
@@ -353,6 +415,8 @@ def _run_openclaw_prompt_stream(
 ) -> str:
     body = _create_request_body(
         model=model,
+        agent_id=agent_id,
+        session_key=session_key,
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         stream=True,
@@ -446,6 +510,7 @@ def _call_openclaw(*, mode: str) -> str:
 
     system_prompt = AGENT_PATH.read_text().strip()
     user_prompt = _build_user_prompt(mode)
+    snapshot_before = _workspace_source_snapshot() if mode == "fix" else {}
     try:
         response_text = _run_openclaw_prompt_stream(
             base_url=base_url,
@@ -486,6 +551,15 @@ def _call_openclaw(*, mode: str) -> str:
         print(f"session url: {session_url}")
         print(f"log written: {log_path}")
         return ""
+    if mode == "fix":
+        snapshot_after = _workspace_source_snapshot()
+        if snapshot_before == snapshot_after:
+            print(f"session url: {session_url}")
+            print(f"log written: {log_path}")
+            raise SystemExit(
+                "OpenClaw returned from fix mode without modifying workspace/project. "
+                "The run likely stopped at diagnosis or did not inspect enough required files."
+            )
     print(f"session url: {session_url}")
     print(f"log written: {log_path}")
     return response_text

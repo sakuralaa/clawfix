@@ -3,6 +3,8 @@ set -eu
 
 STATE_DIR="/home/node/.openclaw"
 AGENT_DIR="$STATE_DIR/agents/main/agent"
+GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18799}"
+HOST_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18799}"
 
 mkdir -p "$STATE_DIR" "$AGENT_DIR" "/demo/workspace/project"
 
@@ -11,6 +13,9 @@ cat > "$STATE_DIR/openclaw.json" <<EOF
   "agents": {
     "defaults": {
       "workspace": "/demo/workspace/project",
+      "sandbox": {
+        "mode": "off"
+      },
       "model": {
         "primary": "${OPENCLAW_PRIMARY_MODEL:-google/gemini-2.5-flash}"
       }
@@ -28,10 +33,16 @@ cat > "$STATE_DIR/openclaw.json" <<EOF
     }
   },
   "gateway": {
+    "bind": "lan",
+    "port": ${GATEWAY_PORT},
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
     "controlUi": {
       "allowedOrigins": [
-        "http://127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18799}",
-        "http://localhost:${OPENCLAW_GATEWAY_PORT:-18799}"
+        "http://127.0.0.1:${HOST_GATEWAY_PORT}",
+        "http://localhost:${HOST_GATEWAY_PORT}"
       ]
     },
     "http": {
@@ -71,4 +82,5 @@ fi
 
 chown -R node:node "$STATE_DIR"
 
-exec su node -s /bin/sh -c 'cd /app && node dist/index.js gateway --allow-unconfigured --bind lan --port 18789'
+export OPENCLAW_CONFIG_PATH="$STATE_DIR/openclaw.json"
+exec su node -s /bin/sh -c "export OPENCLAW_CONFIG_PATH=/home/node/.openclaw/openclaw.json && openclaw gateway run --allow-unconfigured --bind lan --port ${GATEWAY_PORT}"

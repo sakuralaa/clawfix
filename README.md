@@ -7,75 +7,58 @@ License:
 - non-commercial use only
 - commercial use requires prior written permission
 
-The repo contains:
+This repo includes:
 
-- a small scenario
-- a large scenario
 - simulated static-check findings
-- a real OpenClaw runner
-- a local mock runner
+- a mutable C++ demo workspace
+- a real OpenClaw runner wired through Docker
+- a deterministic local mock runner
 
-## Full Start
+## What Changed
 
-### 0. Prerequisites
+You do not need to fork OpenClaw for this demo anymore.
 
-You need these locally:
+This repo pulls the official OpenClaw image defined in `.env` / `.env.example`, writes the runtime config inside the container, and exposes the gateway locally through Docker Compose.
+
+## Prerequisites
 
 - Docker
-- Docker Compose
+- Docker Compose v2
 - Python 3
 - a Gemini API key
+- a C++ compiler only if you want to build the demo app locally
 
 Windows note:
 
-- clone with normal Git is fine, but shell scripts inside the repo must stay LF, not CRLF
-- this repo includes `.gitattributes` for that reason
-- if you already cloned before `.gitattributes` was added, re-checkout or convert the `.sh` files back to LF
-- on Windows, run Python scripts with `python .\...`
-- on Windows, prefer `docker compose ...` directly instead of `./scripts/*.sh`
+- normal Git clone is fine, but shell scripts in this repo should stay LF, not CRLF
+- prefer `docker compose ...` directly instead of `./scripts/*.sh`
+- run Python scripts with `python .\scripts\...`
 
-### 1. Clone the required OpenClaw repo locally
+## Quick Start
 
-This demo must run against your OpenClaw version.
-
-Do not use the official OpenClaw repo for this demo.
-
-This repo builds Docker from a local OpenClaw checkout. It does not pull a published OpenClaw image.
-
-```bash
-git clone https://github.com/sakuralaa/openclaw.git openclaw
-```
-
-If you already have the repo:
-
-```bash
-cd openclaw
-git pull
-```
-
-### 2. Clone this demo repo
+Clone the repo:
 
 ```bash
 git clone <this-demo-repo-url> ai-static-check-fix-demo
 cd ai-static-check-fix-demo
 ```
 
-### 3. Create local config
+Create local config:
 
 ```bash
 cp .env.example .env
 ```
 
-Generate a gateway token locally:
+Generate a gateway token:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Edit `.env` and fill your local values:
+Edit `.env` and fill in your local secrets:
 
 ```env
-OPENCLAW_REPO_PATH=../openclaw
+OPENCLAW_IMAGE=ghcr.io/openclaw/openclaw:main-slim@sha256:3d8a43e4e96fdfec4d96f774f3029eed821651370a330fce3fe4e27625440b73
 OPENCLAW_GATEWAY_PORT=18799
 OPENCLAW_BASE_URL=http://127.0.0.1:18799
 OPENCLAW_GATEWAY_TOKEN=replace-me
@@ -87,171 +70,128 @@ OPENCLAW_TIMEOUT_SECONDS=180
 OPENCLAW_STARTUP_TIMEOUT_SECONDS=30
 ```
 
-Notes:
-
-- do not commit `.env`
-- use your own gateway token
-- use your own provider key
-- if `openclaw` is not a sibling checkout, set `OPENCLAW_REPO_PATH` to an absolute path
-- `OPENCLAW_REPO_PATH` must point to `https://github.com/sakuralaa/openclaw.git`
-
-### 4. Prepare the demo workspace
-
-Large scenario:
+Bring the gateway up:
 
 ```bash
-python ./scripts/reset_demo.py --scenario large
+docker compose up -d
 ```
 
-Small scenario:
+Notes:
+
+- `.env` stays local and must never be committed
+- the default OpenClaw image is already pinned to a digest for reproducibility
+- if you change `.env`, restart Docker Compose so the generated OpenClaw config is rebuilt
+- `openclaw-cli` is kept as a compose profile-only helper, so normal `docker compose up -d` only starts the gateway
+
+## Dashboard And Pairing
+
+Print the dashboard URL:
+
+```bash
+docker compose --profile cli run --rm --no-deps openclaw-cli dashboard --no-open
+```
+
+Open that URL in your browser.
+
+If the browser asks you to pair the device, list pending requests:
+
+```bash
+docker compose --profile cli run --rm --no-deps openclaw-cli devices list
+```
+
+Approve the request:
+
+```bash
+docker compose --profile cli run --rm --no-deps openclaw-cli devices approve <requestId>
+```
+
+Then refresh the dashboard page.
+
+If the dashboard is not ready yet:
+
+```bash
+docker compose ps
+docker compose logs --tail=120 openclaw-gateway
+```
+
+## Reset The Demo Workspace
+
+The live demo workspace is mutable:
+
+- findings: `workspace/static-signals/current-findings.json`
+- source tree: `workspace/project`
+
+Those two need to stay in sync. Before a fresh fix run, reset one of the scenarios:
 
 ```bash
 python ./scripts/reset_demo.py --scenario small
+python ./scripts/reset_demo.py --scenario large
 ```
 
-### 5. Start the dedicated OpenClaw gateway
+If you only swap the findings file but keep a previously fixed workspace, the agent may correctly decide there is nothing left to edit.
 
-Linux/macOS:
+## Run The Agent
 
-```bash
-./scripts/docker_up.sh
-```
-
-Windows PowerShell:
-
-```powershell
-docker compose up -d --build
-```
-
-What this does:
-
-- loads `.env`
-- builds Docker from `OPENCLAW_REPO_PATH`
-- mounts this repo at `/demo`
-- uses `/demo/workspace/project` as the OpenClaw workspace
-- waits for the gateway to accept connections before returning
-
-Important:
-
-- after `docker compose up -d --build`, wait a bit before probing the gateway
-- the first start can take longer because OpenClaw has to boot and load the model configuration
-- if the first request fails immediately after startup, wait 10 to 20 seconds and retry
-
-If you are on Windows and the container log shows:
-
-```text
-/demo/docker/bootstrap-openclaw.sh: 2: set: Illegal option -
-```
-
-that means the shell script was checked out with CRLF line endings.
-
-Fix it by re-checking out after pulling the latest repo, or convert the script files to LF and rebuild:
-
-```powershell
-docker compose down -v
-git add --renormalize .
-git reset --hard HEAD
-docker compose up -d --build
-```
-
-`OPENCLAW_REPO_PATH` is expected to target your repo:
-
-- `https://github.com/sakuralaa/openclaw.git`
-
-### 6. Open the Web UI
-
-Open:
-
-```text
-http://127.0.0.1:18799/#token=<OPENCLAW_GATEWAY_TOKEN>
-```
-
-If you changed `OPENCLAW_GATEWAY_PORT`, replace `18799`.
-
-The `#token=...` fragment is required for the dashboard.
-
-If the page does not load right away:
-
-- check `docker ps`
-- check `docker compose logs --tail=120 openclaw-gateway`
-- wait a bit and refresh once the gateway is fully up
-
-### 7. If the browser asks for pairing
-
-Linux/macOS, list pending device requests:
-
-```bash
-docker exec -it ai-static-check-fix-demo-openclaw \
-  sh -lc 'cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices list'
-```
-
-Linux/macOS, approve a request:
-
-```bash
-docker exec -it ai-static-check-fix-demo-openclaw \
-  sh -lc 'cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices approve <requestId>'
-```
-
-Windows PowerShell, list pending device requests:
-
-```powershell
-docker exec -it ai-static-check-fix-demo-openclaw sh -lc "cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices list"
-```
-
-Windows PowerShell, approve a request:
-
-```powershell
-docker exec -it ai-static-check-fix-demo-openclaw sh -lc "cd /app && OPENCLAW_GATEWAY_PORT=18789 node dist/index.js devices approve <requestId>"
-```
-
-Then refresh the browser.
-
-Why `18789` here:
-
-- host port is `18799` by default
-- container-internal gateway port is `18789`
-
-### 8. Run the agent
-
-Log mode:
+Diagnosis only:
 
 ```bash
 python ./scripts/openclaw_demo_agent.py --mode log
 ```
 
-Fix mode:
+Apply fixes:
 
 ```bash
 python ./scripts/openclaw_demo_agent.py --mode fix
 ```
 
-The runner appends session information to:
+Fix mode is expected to:
+
+- inspect every file implicated by the findings
+- post one short dashboard comment before the first edit
+- edit files under `workspace/project`
+- re-read changed regions for validation
+- post one short dashboard comment summarizing the edits
+- finish with a short completion note
+
+If fix mode exits with:
+
+```text
+OpenClaw returned from fix mode without modifying workspace/project.
+```
+
+then either the workspace was already fixed, or the run stopped at diagnosis without applying edits. Reset the workspace first if you want a clean end-to-end fix run.
+
+Run metadata is appended to:
 
 - `logs/openclaw-runs/openclaw-demo.log`
 
-### 9. Stop the gateway
+## Build The Demo App
+
+Compile and run the C++ project under `workspace/project`:
 
 ```bash
-./scripts/docker_down.sh
+./scripts/build_demo.sh
 ```
 
-## What This Demo Exercises
+The build uses:
 
-The demo intentionally includes these static-check issue types:
+```bash
+g++ -std=c++17 -Wall -Wextra -Iinclude src/*.cpp -o demo_app
+```
 
-- macro naming violations
-- a cross-file resource leak in `FileReader`
+## Mock Mode
 
-The point is to show:
+For a deterministic local run without real OpenClaw:
 
-- the agent reads static-check findings from JSON
-- the agent reads source files on demand from the mounted workspace
-- the agent can explain root cause across files
-- the agent can modify files in `--fix` mode
+```bash
+python ./scripts/reset_demo.py --scenario small
+python ./scripts/mock_openclaw_agent.py --mode log
+python ./scripts/mock_openclaw_agent.py --mode fix
+```
 
-## Runtime Files
+## Runtime Layout
 
-Static signals:
+Static-signal fixtures:
 
 - `fixtures/static-signals/small-findings.json`
 - `fixtures/static-signals/large-findings.json`
@@ -259,9 +199,9 @@ Static signals:
 
 Workspace:
 
-- `workspace/project/`
+- `workspace/project`
 
-Agent definition:
+Agent prompt:
 
 - `agent/STATIC_CHECK_AGENT.md`
 
@@ -270,7 +210,7 @@ Runners:
 - `scripts/openclaw_demo_agent.py`
 - `scripts/mock_openclaw_agent.py`
 
-Helper commands:
+Helpers:
 
 - `scripts/reset_demo.py`
 - `scripts/use_signal_fixture.py`
@@ -278,85 +218,28 @@ Helper commands:
 - `scripts/docker_up.sh`
 - `scripts/docker_down.sh`
 
-## Scenario Commands
-
-Small log:
+## Stop OpenClaw
 
 ```bash
-python ./scripts/reset_demo.py --scenario small
-python ./scripts/openclaw_demo_agent.py --mode log
+docker compose down
 ```
 
-Small fix:
+Optional helper:
 
 ```bash
-python ./scripts/reset_demo.py --scenario small
-python ./scripts/openclaw_demo_agent.py --mode fix
+./scripts/docker_down.sh
 ```
 
-Large log:
+## Push Safety
 
-```bash
-python ./scripts/reset_demo.py --scenario large
-python ./scripts/openclaw_demo_agent.py --mode log
-```
-
-Large fix:
-
-```bash
-python ./scripts/reset_demo.py --scenario large
-python ./scripts/openclaw_demo_agent.py --mode fix
-```
-
-If you only want to switch the active findings file without resetting the workspace:
-
-```bash
-python ./scripts/use_signal_fixture.py --scenario small
-python ./scripts/use_signal_fixture.py --scenario large
-```
-
-## Mock Mode
-
-If you want a deterministic local run without real OpenClaw:
-
-```bash
-python ./scripts/reset_demo.py --scenario small
-python ./scripts/mock_openclaw_agent.py --mode log
-python ./scripts/mock_openclaw_agent.py --mode fix
-```
-
-## Upload Notes
-
-Before pushing this repo:
+Before pushing:
 
 - keep `.env` local only
-- keep provider keys local only
+- keep provider API keys local only
 - keep gateway tokens local only
-- review `logs/openclaw-runs/openclaw-demo.log` before pushing, or leave it untracked
-- make sure `OPENCLAW_REPO_PATH` is documented in `.env.example`, not committed in `.env`
-
-## Token And Pairing Summary
-
-Gateway token:
-
-- required by `scripts/openclaw_demo_agent.py`
-- required by the Web UI
-- stored only in your local `.env`
-- can be generated with `openssl rand -hex 32`
-
-Pairing:
-
-- the dedicated gateway may require browser/device pairing
-- if so, use `devices list` and `devices approve` inside the container
-- approval is separate from the shared gateway token
-
-## Required OpenClaw Repo
-
-Users of this demo should use:
-
-- `https://github.com/sakuralaa/openclaw.git`
-
-They should not use the official OpenClaw repository for this demo.
+- keep logs and temporary files untracked
+- keep `.env.example` aligned with the current image and env vars
 
 ## Demo Video
-url: https://www.youtube.com/watch?v=GYFP4GEz5DE
+
+https://www.youtube.com/watch?v=GYFP4GEz5DE

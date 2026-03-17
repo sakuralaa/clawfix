@@ -11,20 +11,20 @@ if [ -f ".env" ]; then
   set +a
 fi
 
-OPENCLAW_REPO_PATH="${OPENCLAW_REPO_PATH:-../openclaw}"
+OPENCLAW_IMAGE="${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:main-slim@sha256:3d8a43e4e96fdfec4d96f774f3029eed821651370a330fce3fe4e27625440b73}"
 
-if [ ! -d "$OPENCLAW_REPO_PATH" ]; then
-  echo "OPENCLAW_REPO_PATH does not exist: $OPENCLAW_REPO_PATH" >&2
-  echo "Set OPENCLAW_REPO_PATH in .env to a local OpenClaw checkout." >&2
+if [ -z "$OPENCLAW_IMAGE" ]; then
+  echo "OPENCLAW_IMAGE must not be empty." >&2
   exit 1
 fi
 
-if [ ! -f "$OPENCLAW_REPO_PATH/Dockerfile" ]; then
-  echo "OPENCLAW_REPO_PATH is missing a Dockerfile: $OPENCLAW_REPO_PATH" >&2
+if [ -z "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
+  echo "OPENCLAW_GATEWAY_TOKEN is required in .env." >&2
   exit 1
 fi
 
-docker compose up -d --build openclaw-gateway
+docker pull "$OPENCLAW_IMAGE"
+docker compose up -d openclaw-gateway
 
 READY_PORT="${OPENCLAW_GATEWAY_PORT:-18799}"
 READY_HOST="127.0.0.1"

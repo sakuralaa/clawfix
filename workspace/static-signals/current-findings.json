@@ -1,7 +1,7 @@
 {
   "workspace": "workspace/project",
   "tool": "mock-static-check",
-  "scenario": "small",
+  "scenario": "large",
   "findings": [
     {
       "id": "macro-naming-1",
@@ -18,14 +18,20 @@
       "relatedLocations": [
         {
           "file": "src/config_usage.cpp",
-          "line": 4,
+          "line": 10,
           "column": 10,
           "message": "macro reference"
         },
         {
+          "file": "src/telemetry_report.cpp",
+          "line": 10,
+          "column": 46,
+          "message": "macro reference"
+        },
+        {
           "file": "src/main.cpp",
-          "line": 15,
-          "column": 28,
+          "line": 52,
+          "column": 26,
           "message": "macro reference"
         }
       ]
@@ -45,14 +51,86 @@
       "relatedLocations": [
         {
           "file": "src/config_usage.cpp",
-          "line": 4,
-          "column": 26,
+          "line": 10,
+          "column": 28,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/telemetry_report.cpp",
+          "line": 214,
+          "column": 42,
           "message": "macro reference"
         },
         {
           "file": "src/main.cpp",
-          "line": 10,
+          "line": 38,
           "column": 56,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "macro-naming-3",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro telemetryFlushWindow does not match SCREAMING_SNAKE_CASE",
+      "symbol": "telemetryFlushWindow",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 6,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/config_usage.cpp",
+          "line": 10,
+          "column": 43,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/cache_pipeline.cpp",
+          "line": 9,
+          "column": 30,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/telemetry_report.cpp",
+          "line": 10,
+          "column": 41,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 89,
+          "column": 78,
+          "message": "macro reference"
+        }
+      ]
+    },
+    {
+      "id": "macro-naming-4",
+      "ruleId": "macro-naming",
+      "severity": "warning",
+      "message": "macro Cache_line_size does not match SCREAMING_SNAKE_CASE",
+      "symbol": "Cache_line_size",
+      "category": "macro-naming",
+      "primaryLocation": {
+        "file": "include/config_macros.h",
+        "line": 7,
+        "column": 9
+      },
+      "relatedLocations": [
+        {
+          "file": "src/cache_pipeline.cpp",
+          "line": 9,
+          "column": 10,
+          "message": "macro reference"
+        },
+        {
+          "file": "src/main.cpp",
+          "line": 53,
+          "column": 33,
           "message": "macro reference"
         }
       ]
@@ -66,13 +144,13 @@
       "category": "resource-leak",
       "primaryLocation": {
         "file": "src/file_reader.cpp",
-        "line": 5,
+        "line": 7,
         "column": 54
       },
       "relatedLocations": [
         {
           "file": "include/file_reader.h",
-          "line": 12,
+          "line": 27,
           "column": 3,
           "message": "class-owned FILE* member"
         }
@@ -80,19 +158,19 @@
       "trace": [
         {
           "file": "src/file_reader.cpp",
-          "line": 5,
+          "line": 7,
           "column": 54,
           "event": "resource acquired by fopen"
         },
         {
           "file": "include/file_reader.h",
-          "line": 12,
+          "line": 27,
           "column": 3,
           "event": "resource stored in owning member"
         },
         {
           "file": "include/file_reader.h",
-          "line": 7,
+          "line": 15,
           "column": 7,
           "event": "class has no destructor declaration"
         }
